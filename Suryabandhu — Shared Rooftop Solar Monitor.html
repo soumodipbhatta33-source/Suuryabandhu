@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suryabandhu — Shared Rooftop Solar Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D1712;
+    --surface: #14211A;
+    --surface-2: #1A2A21;
+    --line: #2A3F31;
+    --text: #E8EDE5;
+    --text-dim: #8FA396;
+    --amber: #E8A33D;
+    --teal: #6FBF8B;
+    --red: #D2604A;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  :root:not([data-theme="light"]) {
+    --bg: #0D1712; --surface: #14211A; --surface-2: #1A2A21; --line: #2A3F31;
+    --text: #E8EDE5; --text-dim: #8FA396;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F1F3E9; --surface: #FFFFFF; --surface-2: #F7F8F0; --line: #D8DECB;
+      --text: #16201A; --text-dim: #5D6B5C;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F1F3E9; --surface: #FFFFFF; --surface-2: #F7F8F0; --line: #D8DECB;
+    --text: #16201A; --text-dim: #5D6B5C;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height: 100%;
+  }
+  .num { font-family: 'JetBrains Mono', monospace; }
+
+  .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  @media (max-width: 820px) { .shell { grid-template-columns: 1fr; } }
+
+  .rail {
+    background: var(--surface); border-right: 1px solid var(--line);
+    padding: 28px 20px; display: flex; flex-direction: column; gap: 28px;
+  }
+  @media (max-width: 820px) { .rail { border-right: none; border-bottom: 1px solid var(--line); flex-direction: row; align-items: center; justify-content: space-between; padding: 16px 20px; } }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand .mark { width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, var(--teal), #3E7A55); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; }
+  .brand h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  .rail-block { display: flex; flex-direction: column; gap: 6px; }
+  @media (max-width: 820px) { .rail-block { display: none; } }
+  .rail-block h3 { font-size: 11px; text-transform: none; color: var(--text-dim); font-weight: 500; margin-bottom: 4px; letter-spacing: 0.02em; }
+  .site-btn {
+    text-align: left; background: none; border: none; color: var(--text-dim);
+    font-family: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  }
+  .site-btn.active { background: var(--surface-2); color: var(--text); font-weight: 500; }
+  .site-btn:hover:not(.active) { color: var(--text); }
+
+  .main { padding: 28px 32px 60px; display: flex; flex-direction: column; gap: 28px; max-width: 1180px; }
+  @media (max-width: 640px) { .main { padding: 20px 16px 48px; } }
+
+  .top-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .top-row h2 { font-size: 22px; font-weight: 600; }
+  .top-row p { color: var(--text-dim); font-size: 13.5px; margin-top: 4px; max-width: 46ch; }
+  .clock { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-dim); text-align: right; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .stat-grid { grid-template-columns: 1fr; } }
+  .stat.sun .value { color: var(--amber); }
+  .stat.lifetime .value { color: var(--teal); }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 18px 16px;
+  }
+  .stat .label { font-size: 12.5px; color: var(--text-dim); margin-bottom: 10px; }
+  .stat .value { font-size: 26px; font-weight: 600; }
+  .stat .value span { font-size: 14px; color: var(--text-dim); font-weight: 500; margin-left: 2px; }
+  .stat.solar .value { color: var(--amber); }
+  .stat.savings .value { color: var(--teal); }
+
+  .panel-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 6px; }
+  .panel-title h3 { font-size: 15px; font-weight: 600; }
+  .panel-title .sub { font-size: 12.5px; color: var(--text-dim); }
+
+  .household-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .household-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .household-grid { grid-template-columns: 1fr; } }
+
+  .hcard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; position: relative; overflow: hidden;
+  }
+  .hcard.fault { border-color: var(--red); }
+  .hcard-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .hcard-head .name { font-size: 13.5px; font-weight: 500; }
+  .hcard-head .flat { font-size: 11.5px; color: var(--text-dim); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+  .dot.fault-dot { background: var(--red); }
+  .hcard .watt { font-size: 24px; font-weight: 600; }
+  .hcard .watt span { font-size: 12px; color: var(--text-dim); margin-left: 3px; font-weight: 400; }
+  .alloc-row { display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 8px; }
+  .alloc-row .solar-part { color: var(--amber); }
+  .alloc-row .grid-part { color: var(--text-dim); }
+  .bar-track { height: 6px; background: var(--surface-2); border-radius: 3px; margin-top: 6px; overflow: hidden; display: flex; }
+  .bar-fill { height: 100%; background: var(--amber); transition: width 0.6s ease; }
+  .bar-fill.grid-fill { background: var(--line); }
+  .hcard.fault .bar-fill { background: var(--red); }
+  .hcard-foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+  .hcard-foot .fault-msg { color: var(--red); font-weight: 500; }
+
+  .fault-banner {
+    display: none; align-items: center; gap: 10px; background: rgba(210, 96, 74, 0.12);
+    border: 1px solid var(--red); color: var(--red); border-radius: 10px;
+    padding: 12px 16px; font-size: 13px; font-weight: 500; margin-bottom: 16px;
+  }
+  .fault-banner.show { display: flex; }
+  .fault-banner .f-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; animation: pulse-dot 1.4s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; max-width: 640px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--text-dim); font-size: 11.5px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  .num-cell { font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .savings-cell { color: var(--teal); font-family: 'JetBrains Mono', monospace; text-align: right; }
+
+  .theme-toggle {
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--text-dim);
+    font-family: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand-row">
+      <div class="mark">🌿</div>
+      <div class="brand"><h1>Suryabandhu</h1><p>Shared rooftop solar</p></div>
+    </div>
+    <div class="rail-block">
+      <h3>Sites</h3>
+      <button class="site-btn active" data-site="0">Lake View Apts · Kolkata</button>
+      <button class="site-btn" data-site="1">Sukumar's Plot · Bardhaman</button>
+      <button class="site-btn" data-site="2">Mini-grid · Sundarbans</button>
+    </div>
+    <div class="rail-block" style="margin-top: auto;">
+      <h3>Display</h3>
+      <button class="theme-toggle" onclick="toggleTheme()">Toggle theme</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="top-row">
+      <div>
+        <h2 id="site-heading">Lake View Apartments — 8 flats, 1 shared roof</h2>
+        <p id="site-desc">Live solar allocation across households, updating from meter nodes every few seconds.</p>
+      </div>
+      <div class="clock" id="clock">—</div>
+    </div>
+
+    <div class="fault-banner" id="fault-banner">
+      <div class="f-dot"></div>
+      <span id="fault-banner-text"></span>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat solar"><div class="label">Solar generated today (kWh)</div><div class="value num" id="stat-gen">0<span>kWh</span></div></div>
+      <div class="stat"><div class="label">Drawn from grid today (kWh)</div><div class="value num" id="stat-grid">0<span>kWh</span></div></div>
+      <div class="stat savings"><div class="label">Household savings today</div><div class="value num" id="stat-savings">₹0<span id="stat-savings-suffix">/8 flats</span></div></div>
+      <div class="stat lifetime"><div class="label">Total energy produced, lifetime</div><div class="value num" id="stat-lifetime">0<span>kWh</span></div></div>
+      <div class="stat"><div class="label">Solar utilization now</div><div class="value num" id="stat-util">0<span>%</span></div></div>
+      <div class="stat"><div class="label">Nodes healthy</div><div class="value num" id="stat-nodes">8<span id="stat-nodes-suffix">/ 8 shown</span></div></div>
+    </div>
+
+    <section>
+      <div class="panel-title"><h3>Live energy allocation</h3><span class="sub">Instantaneous, from meter + inverter readings</span></div>
+      <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat solar"><div class="label">Solar generation now</div><div class="value num" id="live-solar">0.00<span>kW</span></div></div>
+        <div class="stat"><div class="label">Total apartment load now</div><div class="value num" id="live-load">0.00<span>kW</span></div></div>
+        <div class="stat"><div class="label">Grid requirement now</div><div class="value num" id="live-grid">0.00<span>kW</span></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="panel-title"><h3>Household live draw</h3><span class="sub" id="hh-sub">Showing all 8 metered flats · solar allocated proportionally to demand</span></div>
+      <div class="household-grid" id="hgrid"></div>
+    </section>
+
+    <section>
+      <div class="panel-title"><h3>Fair-split billing, this month</h3><span class="sub">Cost shared by actual usage, not headcount</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Flat</th><th style="text-align:right">Solar used</th><th style="text-align:right">Grid used</th><th style="text-align:right">Saved</th></tr></thead>
+          <tbody id="billing-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+function toggleTheme() {
+  const r = document.documentElement;
+  const cur = r.getAttribute('data-theme');
+  r.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
+}
+
+// ── Live data config ──────────────────────────────────────────────
+// Flip this on once your controller/backend is serving real readings at
+// API_BASE + '/sites/{id}/live'. Until then the dashboard simulates.
+const USE_LIVE_DATA = true;
+const API_BASE = 'http://localhost:4000/api';
+const LIVE_FETCH_TIMEOUT_MS = 2500;
+
+async function fetchLiveReadings(siteId) {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), LIVE_FETCH_TIMEOUT_MS);
+    const res = await fetch(`${API_BASE}/sites/${siteId}/live`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null; // sensor/wifi hiccup — caller falls back to simulation
+  }
+}
+
+function makeFlats(codes) {
+  return codes.map(f => ({
+    flat: f, base: 180 + Math.random()*220, load: 0, solarW: 0, gridW: 0, fault: false,
+    solarKwh: 2 + Math.random()*3, gridKwh: 0.4 + Math.random()*1.2, faultTick: 0
+  }));
+}
+
+const sites = [
+  {
+    id: 'lakeview',
+    name: 'Lake View Apts · Kolkata',
+    heading: 'Lake View Apartments — 8 flats, 1 shared roof',
+    desc: 'Live solar allocation across households, updating from meter nodes every few seconds.',
+    flats: makeFlats(['3A','3B','4C','5A','6D','7B','8A','2C']),
+    solarKwPeak: 2.6, solarNowKw: 0,
+    totalGen: 42.6, totalGrid: 11.3, lifetimeGen: 18420.5
+  },
+  {
+    id: 'bardhaman',
+    name: "Sukumar's Plot · Bardhaman",
+    heading: "Sukumar's Plot — 8 flats, 1 shared roof",
+    desc: 'Live solar allocation across households, updating from meter nodes every few seconds.',
+    flats: makeFlats(['1A','1B','2A','2B','3C','3D','4A','4B']),
+    solarKwPeak: 1.8, solarNowKw: 0,
+    totalGen: 31.8, totalGrid: 9.7, lifetimeGen: 12905.2
+  },
+  {
+    id: 'sundarbans',
+    name: 'Mini-grid · Sundarbans',
+    heading: 'Sundarbans Mini-grid — 8 flats, 1 shared roof',
+    desc: 'Live solar allocation across households, updating from meter nodes every few seconds.',
+    flats: makeFlats(['A1','A2','A3','A4','B1','B2','B3','B4']),
+    solarKwPeak: 3.2, solarNowKw: 0,
+    totalGen: 26.4, totalGrid: 14.1, lifetimeGen: 9310.8
+  }
+];
+
+let activeSite = 0;
+const genEl = document.getElementById('stat-gen');
+const gridEl = document.getElementById('stat-grid');
+const savingsEl = document.getElementById('stat-savings');
+const savingsSuffixEl = document.getElementById('stat-savings-suffix');
+const nodesEl = document.getElementById('stat-nodes');
+const nodesSuffixEl = document.getElementById('stat-nodes-suffix');
+const lifetimeEl = document.getElementById('stat-lifetime');
+const utilEl = document.getElementById('stat-util');
+const liveSolarEl = document.getElementById('live-solar');
+const liveLoadEl = document.getElementById('live-load');
+const liveGridEl = document.getElementById('live-grid');
+const hgrid = document.getElementById('hgrid');
+const faultBanner = document.getElementById('fault-banner');
+const faultBannerText = document.getElementById('fault-banner-text');
+const billingBody = document.getElementById('billing-body');
+const siteHeadingEl = document.getElementById('site-heading');
+const siteDescEl = document.getElementById('site-desc');
+const hhSubEl = document.getElementById('hh-sub');
+
+function switchSite(i) {
+  activeSite = i;
+  document.querySelectorAll('.site-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.site) === i));
+  const s = sites[i];
+  siteHeadingEl.textContent = s.heading;
+  siteDescEl.textContent = s.desc;
+  hhSubEl.textContent = `Showing all ${s.flats.length} metered flats`;
+  savingsSuffixEl.textContent = `/${s.flats.length} flats`;
+  nodesSuffixEl.textContent = `/ ${s.flats.length} shown`;
+  renderHouseholds();
+  renderBilling();
+  renderStats();
+}
+
+document.querySelectorAll('.site-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchSite(Number(btn.dataset.site)));
+});
+
+function renderHouseholds() {
+  const state = sites[activeSite].flats;
+  hgrid.innerHTML = state.map(h => {
+    const solarPct = h.load > 0 ? Math.min(100, (h.solarW / h.load) * 100) : 0;
+    const gridPct = 100 - solarPct;
+    const contribPct = Math.round(solarPct);
+    return `<div class="hcard ${h.fault ? 'fault' : ''}">
+      <div class="hcard-head">
+        <span class="name">Flat ${h.flat}</span>
+        <span class="dot ${h.fault ? 'fault-dot' : ''}"></span>
+      </div>
+      <div class="watt num">${Math.round(h.load)}<span>W load now</span></div>
+      <div class="alloc-row">
+        <span class="solar-part num">${Math.round(h.solarW)} W solar</span>
+        <span class="grid-part num">${Math.round(h.gridW)} W grid</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${solarPct}%"></div><div class="bar-fill grid-fill" style="width:${gridPct}%"></div></div>
+      <div class="hcard-foot">
+        <span>${contribPct}% solar · ${h.solarKwh.toFixed(1)} kWh today</span>
+        <span class="${h.fault ? 'fault-msg' : ''}">${h.fault ? 'Fault flagged' : 'Normal'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBilling() {
+  const rate = 8; // ₹ per kWh grid-equivalent
+  const state = sites[activeSite].flats;
+  billingBody.innerHTML = state.map(h => {
+    const saved = (h.solarKwh * rate).toFixed(0);
+    return `<tr>
+      <td>Flat ${h.flat}</td>
+      <td class="num-cell">${h.solarKwh.toFixed(1)} kWh</td>
+      <td class="num-cell">${h.gridKwh.toFixed(1)} kWh</td>
+      <td class="savings-cell">₹${saved}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFaultBanner() {
+  const faulted = sites[activeSite].flats.filter(h => h.fault).map(h => h.flat);
+  if (faulted.length === 0) {
+    faultBanner.classList.remove('show');
+    return;
+  }
+  faultBanner.classList.add('show');
+  faultBannerText.textContent = faulted.length === 1
+    ? `Fault flagged — Flat ${faulted[0]} output is abnormal. Check meter/connector.`
+    : `Faults flagged — Flats ${faulted.join(', ')} output is abnormal. Check meters/connectors.`;
+}
+
+function renderStats() {
+  const s = sites[activeSite];
+  const healthy = s.flats.filter(h => !h.fault).length;
+  const savings = Math.round(s.totalGen * 8);
+  const totalLoadW = s.flats.reduce((sum, h) => sum + h.load, 0);
+  const solarUsedW = s.flats.reduce((sum, h) => sum + h.solarW, 0);
+  const gridUsedW = totalLoadW - solarUsedW;
+  const util = totalLoadW > 0 ? (solarUsedW / totalLoadW) * 100 : 0;
+
+  genEl.textContent = s.totalGen.toFixed(1);
+  gridEl.textContent = s.totalGrid.toFixed(1);
+  savingsEl.textContent = '₹' + savings.toLocaleString('en-IN');
+  lifetimeEl.textContent = s.lifetimeGen.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  utilEl.textContent = util.toFixed(1);
+  nodesEl.textContent = healthy + ' / ' + s.flats.length + ' shown';
+  liveSolarEl.textContent = s.solarNowKw.toFixed(2);
+  liveLoadEl.textContent = (totalLoadW / 1000).toFixed(2);
+  liveGridEl.textContent = (gridUsedW / 1000).toFixed(2);
+  renderFaultBanner();
+}
+
+async function tick() {
+  for (let si = 0; si < sites.length; si++) {
+    const s = sites[si];
+    let live = null;
+    if (USE_LIVE_DATA) live = await fetchLiveReadings(s.id);
+
+    if (live && typeof live.solarNowKw === 'number' && Array.isArray(live.flats)) {
+      // ── Real readings from controller/backend ──
+      s.solarNowKw = live.solarNowKw;
+      s.flats.forEach(h => {
+        const r = live.flats.find(f => f.flat === h.flat);
+        if (!r) return;
+        h.load = Math.max(0, r.loadW);
+        h.fault = r.fault;
+      });
+    } else {
+      // ── Fallback simulation (used whenever USE_LIVE_DATA is off, or a fetch fails) ──
+      s.solarNowKw = Math.max(0, s.solarKwPeak * (0.55 + 0.35 * Math.sin(Date.now()/45000 + si*2)) + (Math.random()*0.15 - 0.075));
+      s.flats.forEach(h => {
+        if (h.fault) {
+          h.faultTick++;
+          h.load = h.base * 0.35 + (Math.random()*20 - 10);
+          if (h.faultTick > 8) { h.fault = false; h.faultTick = 0; }
+        } else {
+          h.load = h.base + (Math.sin(Date.now()/4000 + h.base) * 40) + (Math.random()*24 - 12);
+          if (Math.random() < 0.006) { h.fault = true; h.faultTick = 0; }
+        }
+        h.load = Math.max(0, h.load);
+      });
+    }
+
+    // ── Allocation + accumulation: identical regardless of where the readings came from ──
+    const solarNowW = s.solarNowKw * 1000;
+    const totalLoadW = s.flats.reduce((sum, h) => sum + h.load, 0);
+    const solarUsedW = Math.min(solarNowW, totalLoadW);
+    let genDelta = 0, gridDelta = 0;
+    s.flats.forEach(h => {
+      const share = totalLoadW > 0 ? h.load / totalLoadW : 0;
+      h.solarW = solarUsedW * share;
+      h.gridW = h.load - h.solarW;
+      const solarStep = (h.solarW / 1000) / 30; // demo scaling: one tick ≈ 1/30 hour
+      const gridStep = (h.gridW / 1000) / 30;
+      h.solarKwh += solarStep;
+      h.gridKwh += gridStep;
+      genDelta += solarStep;
+      gridDelta += gridStep;
+    });
+
+    s.totalGen += genDelta;
+    s.totalGrid += gridDelta;
+    s.lifetimeGen += (solarNowW/1000)/30;
+  }
+
+  renderStats();
+  renderHouseholds();
+  renderBilling();
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleString('en-IN', {
+    weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+renderStats();
+renderHouseholds();
+renderBilling();
+updateClock();
+setInterval(tick, 1400);
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
